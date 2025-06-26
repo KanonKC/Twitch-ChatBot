@@ -23,7 +23,7 @@ class TwitchAPI:
         }
         response = requests.get(url, headers=headers)
         return response.json()
-
+        
     def get_user(self, login):
         url = f"{self.endpoint}/users?login={login}"
         headers = {
@@ -75,10 +75,15 @@ class TwitchVoteBot(commands.Bot):
                 cursor = None
                 while cursor or first_time:
                     broadcaster_sub_res = self.helix.get_broadcaster_subscriptions(self.channel_id, cursor)
+                    print('broadcaster_sub_res',broadcaster_sub_res)
                     for sub in broadcaster_sub_res["data"]:
                         self.broadcaster_subscriptions_table[sub["user_login"]] = sub
-                    cursor = broadcaster_sub_res["pagination"]["cursor"]
+                    if "cursor" in broadcaster_sub_res["pagination"]:
+                        cursor = broadcaster_sub_res["pagination"]["cursor"]
+                    else:
+                        cursor = None
                     first_time = False
+                    print('cursor',cursor, first_time)
             except Exception as e:
                 print("ไม่สามารถดึงข้อมูลสมาชิกช่องของคุณได้", e)
 
@@ -340,6 +345,7 @@ class App:
         self.result_table.delete(*self.result_table.get_children())
         diff = 0
         for idx, (user, choice) in enumerate(result, start=1):
+            subscription = "-"
             if user in self.bot.broadcaster_subscriptions_table:
                 match (self.bot.broadcaster_subscriptions_table[user]["tier"]):
                     case "1000":
@@ -348,8 +354,7 @@ class App:
                         subscription = "Tier 2"
                     case "3000":
                         subscription = "Tier 3"
-                    case _:
-                        subscription = "-"
+                        
 
             self.result_table.insert("", "end", values=(idx + diff, user, subscription, choice))
             if subscription != "-":
