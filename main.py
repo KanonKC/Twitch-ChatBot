@@ -167,11 +167,40 @@ class TwitchVoteBot(commands.Bot):
             print("ไม่สามารถส่งข้อความได้ เนื่องจากยังไม่มีการเชื่อมต่อกับช่อง")
 
     def save_results_to_file(self, result):
+        # This file generate user, choice, subscription sort by time
         file_path = "vote_results.txt"
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write("Vote Results:\n")
             for user, choice in result:  # รับผลโหวตในรูปแบบ tuple
-                file.write(f"{user} voted for {choice}\n")
+                subscription = self.get_subscription(user)
+                match subscription:
+                    case "1000":
+                        subscription = "T1"
+                    case "2000":
+                        subscription = "T2"
+                    case "3000":
+                        subscription = "T3"
+                    case "0000":
+                        subscription = "None"
+                file.write(f"{user},{choice},{subscription}\n")
+                if subscription != "None":
+                    file.write(f"{user},{choice},{subscription}\n")
+        print(f"Results saved to {file_path}")
+
+        # This file generate only username group by choice
+        file_path = "vote_results_choice_seperated.txt"
+        group_by_choice = {}
+        for user, choice in result:
+            if choice not in group_by_choice:
+                group_by_choice[choice] = []
+            group_by_choice[choice].append(user)
+            if self.get_subscription(user) != "0000":
+                group_by_choice[choice].append(user)
+        with open(file_path, "w", encoding="utf-8") as file:
+            for choice, users in group_by_choice.items():
+                file.write(f"------------- Choice: {choice} -------------n")
+                file.write('\n'.join(users))
+                file.write('\n')
+            
         print(f"Results saved to {file_path}")
 
     def stop_vote(self):
@@ -180,6 +209,11 @@ class TwitchVoteBot(commands.Bot):
         self.send_twitch_message("⏹️ โหวตถูกหยุดแล้ว!")
         self.save_results_to_file(self.votes)  # Save the results when stop vote is clicked
         self.finish_vote()  # Finish vote after stopping
+
+    def get_subscription(self, user):
+        if user in self.broadcaster_subscriptions_table:
+            return self.broadcaster_subscriptions_table[user]["tier"]
+        return "0000"
 
 class App:
     def __init__(self, root):
@@ -345,17 +379,16 @@ class App:
         self.result_table.delete(*self.result_table.get_children())
         diff = 0
         for idx, (user, choice) in enumerate(result, start=1):
-            subscription = "-"
-            if user in self.bot.broadcaster_subscriptions_table:
-                match (self.bot.broadcaster_subscriptions_table[user]["tier"]):
-                    case "1000":
-                        subscription = "Tier 1"
-                    case "2000":
-                        subscription = "Tier 2"
-                    case "3000":
-                        subscription = "Tier 3"
-                        
-
+            subscription = self.bot.get_subscription(user)
+            match subscription:
+                case "1000":
+                    subscription = "Tier 1"
+                case "2000":
+                    subscription = "Tier 2"
+                case "3000":
+                    subscription = "Tier 3"
+                case "0000":
+                    subscription = "-"
             self.result_table.insert("", "end", values=(idx + diff, user, subscription, choice))
             if subscription != "-":
                 diff += 1
