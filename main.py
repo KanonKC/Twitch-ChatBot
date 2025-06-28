@@ -197,7 +197,7 @@ class TwitchVoteBot(commands.Bot):
                 group_by_choice[choice].append(user)
         with open(file_path, "w", encoding="utf-8") as file:
             for choice, users in group_by_choice.items():
-                file.write(f"------------- Choice: {choice} -------------n")
+                file.write(f"------------- Choice: {choice} -------------\n")
                 file.write('\n'.join(users))
                 file.write('\n')
             
